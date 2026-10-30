@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Production Note</title>
+<meta name="theme-color" content="#15110A">
+<meta name="color-scheme" content="light dark">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Prod Note">
+<style>
+:root{
+  --bg:#f6f3ea;--card:#fff;--ink:#1b1810;--muted:#6f6a5b;--line:#e3dccb;--soft:#faf6e8;
+  --gold:#E3A613;--gold-d:#B97F00;--gold-ink:#15110A;--black:#15110A;--ok:#1d7a46;--bad:#c0392b;--bad-bg:#fdecea;
+  --shadow:0 1px 2px rgba(0,0,0,.06),0 6px 18px rgba(60,45,5,.07);
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0f0d08;--card:#1a1710;--ink:#f3eee0;--muted:#a59f8c;--line:#332e20;--soft:#221e13;--bad-bg:#3a1b17;--shadow:0 1px 2px rgba(0,0,0,.5)}
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;padding-bottom:calc(92px + env(safe-area-inset-bottom))}
+header{background:var(--black);color:#fff;padding:calc(10px + env(safe-area-inset-top)) 16px 10px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:20;border-bottom:3px solid var(--gold)}
+header img{width:38px;height:38px;border-radius:9px}
+header h1{font-size:18px;margin:0;font-weight:700;letter-spacing:.01em;flex:1}
+header h1 small{display:block;font-weight:500;font-size:12px;color:#d8cfae}
+#who{background:#2a2414;color:#F8D96B;border:1px solid #5a4a14;border-radius:99px;padding:6px 12px;font:inherit;font-size:13.5px;font-weight:600;max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer}
+main{max-width:640px;margin:0 auto;padding:14px 14px 0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:14px;box-shadow:var(--shadow)}
+label.f{display:block;font-size:12.5px;font-weight:600;color:var(--muted);margin-bottom:5px}
+input,select{font:inherit;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:11px;padding:11px 12px;width:100%;min-width:0}
+input:focus,select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px color-mix(in srgb,var(--gold) 30%,transparent)}
+input.bad{border-color:var(--bad);background:var(--bad-bg)}
+.row{display:flex;gap:10px;align-items:flex-end}
+.row>*{flex:1;min-width:0}
+.seg{display:flex;border:1.5px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+.seg button{flex:1;border:0;background:transparent;color:var(--ink);font:inherit;font-weight:600;padding:11px 6px;cursor:pointer;border-right:1px solid var(--line);white-space:nowrap}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--black);color:#F8D96B}
+@media (prefers-color-scheme:dark){.seg button.on{background:var(--gold);color:var(--gold-ink)}}
+.blk{border:1.5px solid var(--line);border-radius:14px;padding:12px;margin-bottom:12px;background:var(--soft)}
+.blk.stopped .lines{display:none}
+.bh{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+.bh .t{font-weight:700;font-size:16px;flex:1}
+.bh select{width:auto;font-weight:700;padding:8px 10px}
+.stop{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.stop input{width:20px;height:20px;accent-color:var(--gold-d);padding:0}
+.x{border:0;background:transparent;color:var(--muted);font-size:20px;line-height:1;padding:6px 8px;cursor:pointer;border-radius:8px}
+.x:hover{color:var(--bad);background:var(--bad-bg)}
+.ln{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px;margin-bottom:8px;display:grid;gap:8px}
+.ln .g{display:flex;gap:8px;align-items:center}
+.ln .g>*{min-width:0}
+.ln .num{width:100%;text-align:right}
+.lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.fld{flex:1;display:grid;gap:3px;min-width:0}
+.btn{border:1.5px solid var(--line);background:var(--card);color:var(--ink);border-radius:12px;padding:11px 14px;font:inherit;font-weight:600;cursor:pointer}
+.btn.add{width:100%;border-style:dashed;color:var(--gold-d);border-color:var(--gold)}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:var(--gold-ink)}
+.btn.blk-b{background:var(--black);border-color:var(--black);color:#F8D96B}
+.next{display:flex;flex-wrap:wrap;gap:8px}
+.next .btn{flex:1;min-width:130px;background:var(--black);border-color:var(--black);color:#F8D96B}
+.note{font-size:12.5px;color:var(--muted);margin:0 0 10px}
+.err{color:var(--bad);font-size:13.5px;font-weight:600;margin:8px 0 0}
+details summary{cursor:pointer;font-weight:600;padding:2px 0}
+pre{white-space:pre-wrap;word-break:break-word;background:var(--soft);border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0 0;font:14px/1.45 ui-monospace,Consolas,monospace}
+.bar{position:fixed;left:0;right:0;bottom:0;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom));z-index:30}
+.bar .in{max-width:640px;margin:0 auto;display:flex;gap:10px}
+.bar .btn:first-child{flex:1.7;background:var(--black);border-color:var(--black);color:#F8D96B;font-size:16.5px;padding:14px}
+@media (prefers-color-scheme:dark){.bar .btn:first-child{background:var(--gold);border-color:var(--gold);color:var(--gold-ink)}}
+.bar .btn:last-child{flex:1}
+.sv{display:flex;gap:8px;align-items:center;border-top:1px solid var(--line);padding:10px 0}
+.sv:first-of-type{border-top:0}
+.sv .m{flex:1;min-width:0}
+.sv .m b{display:block}
+.sv .m span{font-size:12.5px;color:var(--muted)}
+.sv .btn{padding:8px 11px;font-size:14px}
+#toast{position:fixed;left:50%;bottom:calc(96px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--black);color:#F8D96B;padding:10px 16px;border-radius:99px;font-weight:600;z-index:60;opacity:0;pointer-events:none;transition:opacity .2s;max-width:90vw;text-align:center}
+#toast.on{opacity:1}
+#ask{position:fixed;inset:0;background:rgba(10,8,3,.78);display:grid;place-items:center;padding:20px;z-index:80}
+#ask[hidden]{display:none}
+.askc{background:var(--card);border-radius:20px;padding:24px 20px;width:100%;max-width:380px;display:grid;gap:12px;border-top:6px solid var(--gold)}
+.askc img{width:64px;height:64px;border-radius:15px;justify-self:center}
+.askc h2{margin:0;text-align:center;font-size:21px}
+.askc p{margin:0;text-align:center;color:var(--muted);font-size:14px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <img src="icon-192.png" alt="">
+  <h1>Production Note<small>Type it once, send it clean</small></h1>
+  <button id="who" type="button" title="Change name"></button>
+</header>
+
+<main>
+  <div class="card">
+    <div class="row">
+      <div><label class="f" for="date">Date</label><input id="date" inputmode="numeric" placeholder="dd-mm-yyyy" autocomplete="off"></div>
+      <div><label class="f">Shift</label><div class="seg" id="shift"><button data-v="Day">Day</button><button data-v="Night">Night</button></div></div>
+    </div>
+    <div style="margin-top:12px"><label class="f">What are you reporting?</label>
+      <div class="seg" id="sect"><button data-v="BB1">BB1</button><button data-v="BB2">BB2</button><button data-v="CL">Chainlink</button><button data-v="BW">Barbed</button></div></div>
+  </div>
+
+  <div id="blocks"></div>
+  <div id="nextWrap" class="card" hidden>
+    <p class="note" id="nextNote">Done with this one? Add the next:</p>
+    <div class="next" id="next"></div>
+  </div>
+  <div id="msg"></div>
+
+  <div class="card">
+    <details id="pv"><summary>Preview the message</summary><pre id="pre"></pre></details>
+  </div>
+
+  <div class="card">
+    <b>Saved notes</b>
+    <p class="note" style="margin-top:2px">Kept on this phone only. Tap Open to change one, or Send to share it again.</p>
+    <div id="saved"></div>
+  </div>
+</main>
+
+<div class="bar"><div class="in">
+  <button class="btn" id="send" type="button">Save &amp; send to WhatsApp</button>
+  <button class="btn" id="copy" type="button">Copy</button>
+</div></div>
+<div id="toast"></div>
+
+<div id="ask" hidden><form class="askc" id="askForm">
+  <img src="icon-192.png" alt="">
+  <h2>Your Name :</h2>
+  <p>Asked once. It goes at the end of every message you send.</p>
+  <input id="askName" autocomplete="name" placeholder="e.g. Jezeer" maxlength="40">
+  <button class="btn gold" type="submit">Continue</button>
+</form></div>
+
+<datalist id="dlItems"></datalist>
+
+<script>
+'use strict';
+/* ───────── storage (browser only) ───────── */
+const K = { name: 'pn.name', draft: 'pn.draft', notes: 'pn.notes', names: 'pn.itemNames' };
+const get = (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } };
+const put = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const pad = n => String(n).padStart(2, '0');
+
+/* ───────── what each section looks like ───────── */
+const SECTIONS = {
+  BB1: { head: 'BB1 {S} Production', defs: [{ kind: 'team', labels: ['Team 1', 'Team 2', 'Team 3', 'Team 4', 'Team 5', 'Team 6'] }] },
+  BB2: { head: 'BB2 {S} Production', defs: [{ kind: 'mach', labels: ['M-2', 'M-3'], stop: 1 }, { kind: 'coil', labels: ['Coiling machine'], once: 1 }, { kind: 'wire', labels: ['Wire used'], once: 1 }] },
+  CL:  { head: 'CHAINLINK {S} Production', defs: [{ kind: 'cl', labels: ['M1', 'M2'], stop: 1 }, { kind: 'wire', labels: ['Wire given'], once: 1 }] },
+  BW:  { head: 'BARBED WIRE {S} Production', defs: [{ kind: 'cl', labels: ['Barbed wire'], single: 1 }, { kind: 'wire', labels: ['Wire given'], once: 1 }] }
+};
+const SECT_NAME = { BB1: 'BB1', BB2: 'BB2', CL: 'Chainlink', BW: 'Barbed wire' };
+const HINT = {
+  team: 'e.g. 40x40x2.2x3x50', mach: 'e.g. 2mmx3ft', coil: 'e.g. 2mmx3ft', cl: 'e.g. Tata ch 90x90x2.5mmx5ft',
+  wire: 'wire, e.g. 2mm'
+};
+const SEED = { BB1: ['40x20x2.7x5x50', '40x40x2.2x3x50', '40x40x2.2x4x50', '40x40x3.7x4x12', '3D mesh 8x3x4mm'],
+  BB2: ['2mmx3ft', '2mmx4ft', '2.2mmx3ft', '2mmx5ft'], CL: [], BW: ['Sada 12x12'] };
+
+/* ───────── state ───────── */
+let S = null;
+const newLine = () => ({ name: '', n: '', unit: 'roll', type: 'Normal', kg: '', wt: '' });
+const newBlock = (def, label) => ({ kind: def.kind, label, stop: false, lines: [newLine(), newLine(), newLine()] });
+function todayStr() { const d = new Date(); return pad(d.getDate()) + '-' + pad(d.getMonth() + 1) + '-' + d.getFullYear(); }
+function defaultShift() { const h = new Date().getHours(); return h >= 6 && h < 18 ? 'Day' : 'Night'; }
+function freshNote(sect, shift, date) {
+  sect = sect || 'BB1';
+  const d = SECTIONS[sect].defs[0];
+  return { id: 'n' + Date.now(), date: date || todayStr(), shift: shift || defaultShift(), sect, blocks: [newBlock(d, d.labels[0])] };
+}
+const defOf = b => SECTIONS[S.sect].defs.find(d => d.kind === b.kind);
+const lineFilled = (k, l) => !!(String(l.name).trim() && (k === 'wire' ? String(l.kg).trim() : String(l.n).trim()));
+const blockFilled = b => b.stop || b.lines.some(l => lineFilled(b.kind, l));
+const cl = v => String(v == null ? '' : v).trim().replace(/\s+/g, '').replace(/,/g, '.');
+
+/* ───────── the message ───────── */
+function lineText(kind, l) {
+  const name = String(l.name).trim(); if (!name) return null;
+  const n = cl(l.n), kg = cl(l.kg), wt = cl(l.wt);
+  if (kind === 'team') return n ? [name + ' = ' + n + ' ' + l.unit].concat(wt ? ['Wt. ' + wt + ' kg'] : []) : null;
+  if (kind === 'mach') return n ? [name + '- ' + n + ' Roll ' + l.type + (kg ? ' (' + kg + 'kg)' : '')] : null;
+  if (kind === 'coil') return n ? [name + '- ' + n + ' Roll ' + l.type] : null;
+  if (kind === 'cl') return n ? [name + '- ' + n + ' Roll' + (kg ? ' (' + kg + 'kg)' : '')] : null;
+  if (kind === 'wire') return kg ? [name + '- ' + kg + 'kg'] : null;
+  return null;
+}
+function buildText(forSend) {
+  const sec = SECTIONS[S.sect], out = [];
+  out.push(S.date); out.push(sec.head.replace('{S}', S.shift));
+  let any = false;
+  for (const b of S.blocks) {
+    const def = defOf(b) || {}, body = [];
+    if (b.stop) body.push('Stop'); else b.lines.forEach(l => { const t = lineText(b.kind, l); if (t) body.push.apply(body, t); });
+    if (!body.length) continue;
+    any = true; out.push('');
+    if (!def.single) out.push(b.label);
+    out.push.apply(out, body);
+  }
+  if (!any) return '';
+  const who = get(K.name, ''); out.push(''); if (who) out.push('Entered by: ' + who);
+  return out.join('\n').replace(/\n+$/, '');
+}
+
+/* ───────── rendering ───────── */
+function lineHtml(b, bi, li) {
+  const l = b.lines[li], k = b.kind, at = 'data-b="' + bi + '" data-l="' + li + '"';
+  const nameIn = '<div class="fld"><span class="lbl">' + (k === 'wire' ? 'Wire' : 'Item') + '</span><input list="dlItems" ' + at + ' data-f="name" value="' + esc(l.name) + '" placeholder="' + HINT[k] + '" autocomplete="off" autocapitalize="off"></div>';
+  const num = (f, lab, ph) => '<div class="fld"><span class="lbl">' + lab + '</span><input class="num" inputmode="decimal" ' + at + ' data-f="' + f + '" value="' + esc(l[f]) + '" placeholder="' + (ph || '') + '"></div>';
+  const sel = (f, lab, opts) => '<div class="fld"><span class="lbl">' + lab + '</span><select ' + at + ' data-f="' + f + '">' + opts.map(o => '<option' + (l[f] === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
+  let row2 = '';
+  if (k === 'team') row2 = num('n', 'How many') + sel('unit', 'Unit', ['roll', 'sheet', 'pc']) + num('wt', 'Wt kg each');
+  else if (k === 'mach') row2 = num('n', 'Rolls') + sel('type', 'Type', ['Normal', 'Lite']) + num('kg', 'Total kg');
+  else if (k === 'coil') row2 = num('n', 'Rolls') + sel('type', 'Type', ['Normal', 'Lite']);
+  else if (k === 'cl') row2 = num('n', 'Rolls') + num('kg', 'Total kg');
+  else row2 = num('kg', 'Kg');
+  return '<div class="ln"><div class="g">' + nameIn + '<button class="x" type="button" title="Remove this line" data-act="rmline" ' + at + '>✕</button></div><div class="g">' + row2 + '</div></div>';
+}
+function render() {
+  $('date').value = S.date;
+  document.querySelectorAll('#shift button').forEach(b => b.classList.toggle('on', b.dataset.v === S.shift));
+  document.querySelectorAll('#sect button').forEach(b => b.classList.toggle('on', b.dataset.v === S.sect));
+  $('blocks').innerHTML = S.blocks.map((b, bi) => {
+    const def = defOf(b) || {}, used = S.blocks.filter((o, j) => j !== bi).map(o => o.label);
+    const title = def.single ? '<div class="t">' + esc(SECT_NAME[S.sect]) + '</div>'
+      : (def.labels && def.labels.length > 1 ? '<select data-act="label" data-b="' + bi + '">' + def.labels.filter(x => x === b.label || !used.includes(x)).map(x => '<option' + (x === b.label ? ' selected' : '') + '>' + x + '</option>').join('') + '</select><div class="t"></div>' : '<div class="t">' + esc(b.label) + '</div>');
+    const stop = def.stop ? '<label class="stop"><input type="checkbox" data-act="stop" data-b="' + bi + '"' + (b.stop ? ' checked' : '') + '> Stopped</label>' : '';
+    const rm = S.blocks.length > 1 ? '<button class="x" type="button" title="Remove this ' + esc(b.label) + '" data-act="rmblock" data-b="' + bi + '">✕</button>' : '';
+    return '<div class="card"><div class="blk' + (b.stop ? ' stopped' : '') + '"><div class="bh">' + title + stop + rm + '</div><div class="lines">' +
+      b.lines.map((l, li) => lineHtml(b, bi, li)).join('') +
+      '<button class="btn add" type="button" data-act="addline" data-b="' + bi + '">+ Add a line</button></div></div></div>';
+  }).join('');
+  refresh(); fillItems();
+}
+function refresh() {
+  // "next" buttons appear only when the last block has something in it
+  const last = S.blocks[S.blocks.length - 1], opts = [];
+  if (blockFilled(last)) {
+    for (const d of SECTIONS[S.sect].defs) {
+      const usedLabels = S.blocks.filter(b => b.kind === d.kind).map(b => b.label);
+      const free = d.labels.filter(x => !usedLabels.includes(x));
+      if (!free.length) continue;
+      if (d.once) opts.push({ d, label: free[0] });
+      else if (d.kind === 'team') opts.push({ d, label: free[0], text: '+ Next team (' + free[0] + ')' });
+      else free.forEach(x => opts.push({ d, label: x }));
+    }
+  }
+  $('nextWrap').hidden = !opts.length;
+  $('next').innerHTML = opts.map((o, i) => '<button class="btn" type="button" data-act="next" data-i="' + i + '">' + (o.text || '+ Add ' + esc(o.label)) + '</button>').join('');
+  $('next')._opts = opts;
+  const t = buildText();
+  $('pre').textContent = t || 'Nothing to send yet. Fill in an item and how many.';
+  saveDraft();
+}
+function saveDraft() { put(K.draft, S); }
+
+/* ───────── events ───────── */
+$('blocks').addEventListener('input', e => {
+  const t = e.target, f = t.dataset.f; if (!f) return;
+  S.blocks[+t.dataset.b].lines[+t.dataset.l][f] = t.value; t.classList.remove('bad'); refresh();
+});
+$('blocks').addEventListener('change', e => {
+  const t = e.target, a = t.dataset.act, bi = +t.dataset.b;
+  if (a === 'label') { S.blocks[bi].label = t.value; render(); }
+  else if (a === 'stop') { S.blocks[bi].stop = t.checked; render(); }
+});
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-act]'); if (!t) return; const a = t.dataset.act, bi = +t.dataset.b;
+  if (a === 'addline') { S.blocks[bi].lines.push(newLine()); render(); const ins = document.querySelectorAll('#blocks .blk')[bi].querySelectorAll('input[data-f=name]'); ins[ins.length - 1].focus(); }
+  else if (a === 'rmline') { const b = S.blocks[bi]; b.lines.splice(+t.dataset.l, 1); if (!b.lines.length) b.lines.push(newLine()); render(); }
+  else if (a === 'rmblock') { if (blockFilled(S.blocks[bi]) && !confirm('Remove ' + S.blocks[bi].label + ' and everything typed in it?')) return; S.blocks.splice(bi, 1); render(); }
+  else if (a === 'next') { const o = $('next')._opts[+t.dataset.i]; S.blocks.push(newBlock(o.d, o.label)); render(); const bl = document.querySelectorAll('#blocks .card'); bl[bl.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  else if (a === 'osave') openNote(t.dataset.id);
+  else if (a === 'ssend') { const n = get(K.notes, []).find(x => x.id === t.dataset.id); if (n) openWA(n.text); }
+  else if (a === 'sdel') { if (!confirm('Delete this saved note?')) return; put(K.notes, get(K.notes, []).filter(x => x.id !== t.dataset.id)); renderSaved(); }
+});
+$('shift').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { S.shift = b.dataset.v; render(); } });
+$('sect').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b || b.dataset.v === S.sect) return;
+  if (S.blocks.some(blockFilled) && !confirm('Switch to ' + SECT_NAME[b.dataset.v] + '? What you typed for ' + SECT_NAME[S.sect] + ' will be cleared.')) return;
+  S = freshNote(b.dataset.v, S.shift, S.date); render();
+});
+$('date').addEventListener('input', e => {
+  const d = e.target.value.replace(/\D/g, '').slice(0, 8); let o = d.slice(0, 2); if (d.length > 2) o += '-' + d.slice(2, 4); if (d.length > 4) o += '-' + d.slice(4);
+  e.target.value = o; S.date = o; e.target.classList.remove('bad'); refresh();
+});
+
+/* ───────── saving and sending ───────── */
+function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 2400); }
+function validDate(s) { const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(s || ''); if (!m) return false; const d = new Date(+m[3], +m[2] - 1, +m[1]); return d.getFullYear() === +m[3] && d.getMonth() === +m[2] - 1 && d.getDate() === +m[1]; }
+function check() {
+  $('msg').innerHTML = '';
+  if (!validDate(S.date)) { $('date').classList.add('bad'); $('date').focus(); return err('Type the date as dd-mm-yyyy.'); }
+  // an item with a name but no number is easy to miss: point it out
+  const miss = [];
+  S.blocks.forEach(b => { if (!b.stop) b.lines.forEach(l => { if (String(l.name).trim() && !lineFilled(b.kind, l)) miss.push(l.name.trim()); }); });
+  if (miss.length) { document.querySelectorAll('#blocks input').forEach(i => { const l = S.blocks[+i.dataset.b] && S.blocks[+i.dataset.b].lines[+i.dataset.l]; if (l && miss.includes(String(l.name).trim()) && i.dataset.f === (S.blocks[+i.dataset.b].kind === 'wire' ? 'kg' : 'n') && !String(i.value).trim()) i.classList.add('bad'); }); return err('"' + miss[0] + '" has no number yet' + (miss.length > 1 ? ' (and ' + (miss.length - 1) + ' more)' : '') + '. Fill it in or remove the line.'); }
+  if (!buildText()) return err('Add at least one item with how many (or the kg for wire).');
+  return true;
+}
+function err(m) { $('msg').innerHTML = '<p class="err">' + esc(m) + '</p>'; return false; }
+function rememberNames() {
+  const all = get(K.names, {}); S.blocks.forEach(b => b.lines.forEach(l => { const n = String(l.name).trim(); if (!n || !lineFilled(b.kind, l)) return; const a = all[S.sect] = (all[S.sect] || []).filter(x => x.toLowerCase() !== n.toLowerCase()); a.unshift(n); all[S.sect] = a.slice(0, 80); })); put(K.names, all);
+}
+function saveNote() {
+  const text = buildText(); rememberNames();
+  const notes = get(K.notes, []).filter(x => x.id !== S.id);
+  notes.unshift({ id: S.id, ts: Date.now(), state: JSON.parse(JSON.stringify(S)), text });
+  put(K.notes, notes.slice(0, 60)); renderSaved(); fillItems(); return text;
+}
+function openWA(text) { window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank'); }
+$('send').onclick = () => { if (!check()) return; const t = saveNote(); toast('Saved. Choose the WhatsApp group…'); openWA(t); };
+$('copy').onclick = async () => {
+  if (!check()) return; const t = saveNote();
+  try { await navigator.clipboard.writeText(t); toast('Saved and copied'); } catch (e) { $('pv').open = true; toast('Saved. Copy from the preview'); }
+};
+function openNote(id) { const n = get(K.notes, []).find(x => x.id === id); if (!n) return; S = JSON.parse(JSON.stringify(n.state)); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); toast('Opened. Change it and send again'); }
+function renderSaved() {
+  const notes = get(K.notes, []);
+  $('saved').innerHTML = notes.length ? notes.map(n => { const s = n.state, c = (n.text.match(/\n/g) || []).length;
+    return '<div class="sv"><div class="m"><b>' + esc(s.date) + ' · ' + esc(SECT_NAME[s.sect]) + ' ' + esc(s.shift) + '</b><span>' + s.blocks.filter(blockFilled).length + ' ' + (s.sect === 'BB1' ? 'team(s)' : 'section(s)') + (n.id === S.id ? ' · open now' : '') + '</span></div>' +
+      '<button class="btn" data-act="osave" data-id="' + n.id + '">Open</button><button class="btn" data-act="ssend" data-id="' + n.id + '">Send</button><button class="x" data-act="sdel" data-id="' + n.id + '" title="Delete">✕</button></div>'; }).join('')
+    : '<p class="note" style="margin:8px 0 0">Nothing saved yet.</p>';
+}
+function fillItems() {
+  const all = get(K.names, {}), list = (all[S.sect] || []).concat(SEED[S.sect] || []);
+  $('dlItems').innerHTML = [...new Set(list)].map(x => '<option value="' + esc(x) + '">').join('');
+}
+
+/* ───────── name (asked once) and start ───────── */
+function showName() { const n = get(K.name, ''); $('who').textContent = n ? '✎ ' + n : 'Your name'; }
+function askName(first) { $('askName').value = get(K.name, ''); $('ask').hidden = false; setTimeout(() => $('askName').focus(), 50); $('ask')._first = first; }
+$('askForm').addEventListener('submit', e => { e.preventDefault(); const v = $('askName').value.trim(); if (!v) { $('askName').classList.add('bad'); return; } put(K.name, v); $('ask').hidden = true; showName(); refresh(); });
+$('askName').addEventListener('input', () => $('askName').classList.remove('bad'));
+$('who').onclick = () => askName(false);
+$('ask').addEventListener('click', e => { if (e.target === $('ask') && get(K.name, '')) $('ask').hidden = true; });
+
+S = get(K.draft, null);
+if (!S || !S.blocks || !SECTIONS[S.sect]) S = freshNote();
+if (!S.id) S.id = 'n' + Date.now();
+showName(); render(); renderSaved();
+if (!get(K.name, '')) askName(true);
+if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
+</script>
+</body>
+</html>
