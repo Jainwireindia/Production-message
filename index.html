@@ -86,6 +86,11 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--soft);border:1px
 .askc img{width:64px;height:64px;border-radius:15px;justify-self:center}
 .askc h2{margin:0;text-align:center;font-size:21px}
 .askc p{margin:0;text-align:center;color:var(--muted);font-size:14px}
+.ins{display:flex;gap:12px;align-items:center}
+.ins img{width:46px;height:46px;border-radius:11px;flex:none}
+.ins .m{min-width:0}.ins .m b{display:block;font-size:16px}.ins .m span{font-size:13.5px;color:var(--muted)}
+.row2{display:flex;gap:10px;margin-top:12px}.row2 .btn{flex:1}
+#install{border-color:var(--gold);border-width:2px}
 .dwrap{position:relative}
 .dwrap input{padding-right:50px}
 .cal{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:10px;background:var(--black);color:#F8D96B;display:grid;place-items:center;cursor:pointer;font-size:18px;overflow:hidden}
@@ -113,6 +118,13 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--soft);border:1px
 </header>
 
 <main>
+  <div class="card" id="install" hidden>
+    <div class="ins">
+      <img src="icon-192.png" alt="">
+      <div class="m"><b>Install Production Note</b><span id="insTxt">Put it on your home screen and open it like an app.</span></div>
+    </div>
+    <div class="row2"><button class="btn gold" type="button" id="insGo">Install</button><button class="btn" type="button" id="insNo">Not now</button></div>
+  </div>
   <div class="card">
     <div class="row">
       <div><label class="f" for="date">Date</label><div class="dwrap"><input id="date" inputmode="numeric" placeholder="dd-mm-yyyy" autocomplete="off"><label class="cal" title="Pick from calendar" aria-label="Pick the date from a calendar">📅<input type="date" id="datePick" aria-label="Calendar"></label></div></div>
@@ -151,7 +163,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--soft);border:1px
   <img src="icon-192.png" alt="">
   <h2>Your Name :</h2>
   <p>Asked once. It goes at the end of every message you send.</p>
-  <input id="askName" autocomplete="name" placeholder="e.g. Jezeer" maxlength="40">
+  <input id="askName" autocomplete="name" placeholder="Name" maxlength="40">
   <button class="btn gold" type="submit">Continue</button>
 </form></div>
 
@@ -177,7 +189,7 @@ const SECTIONS = {
 };
 const SECT_NAME = { BB1: 'BB1', BB2: 'BB2', CL: 'Chainlink', BW: 'Barbed wire' };
 const TEAMS = ['Team A', 'Team B', 'Team C', 'Team D'];
-const HINT = { team: 'e.g. 40x40x2.2x3x50', mach: 'type thickness, e.g. 2 or 1.95', coil: 'type thickness, e.g. 2 or 1.95', cl: 'e.g. Tata ch 90x90x2.5mmx5ft', wire: 'wire, e.g. 2mm' };
+const HINT = { team: 'Item name', mach: 'Item name (type thickness)', coil: 'Item name (type thickness)', cl: 'Item name', wire: 'Wire name' };
 const SEED = { BB1: ['40x20x2.7x5x50', '40x40x2.2x3x50', '40x40x2.2x4x50', '40x40x3.7x4x12', '3D mesh 8x3x4mm'], BB2: [], CL: [], BW: ['Sada 12x12'] };
 const SEED_W = { BB2: ['2mm', '2.2mm', '2.5mm', '1.8mm'], CL: ['Tata wire 2.5mm', 'Supreme wire Printed Wire 2.5mm', 'Tata Ayush Wire 2.5mm', 'Gi Wire 2.5mm'], BW: ['Gi Wire 2.5mm', 'Gi Wire 2mm'], BB1: [] };
 const THICK = ['1.95', '2', '2.15', '2.3'];   // quick picks for the 17x17 name; any number typed works too
@@ -245,16 +257,16 @@ function buildText() {
 function lineHtml(b, bi, li) {
   const l = b.lines[li], k = b.kind, at = 'data-b="' + bi + '" data-l="' + li + '"';
   const listAttr = k === 'wire' ? 'list="dlWire"' : (k === 'mach' || k === 'coil') ? '' : 'list="dlItems"';
-  const nameIn = '<div class="fld"><span class="lbl">' + (k === 'wire' ? 'Wire' : 'Item') + '</span><input ' + listAttr + ' ' + at + ' data-k="' + k + '" data-f="name" value="' + esc(l.name) + '" placeholder="' + HINT[k] + '" autocomplete="off" autocapitalize="off"><div class="chips" data-chips></div></div>';
+  const nameIn = '<div class="fld"><span class="lbl">' + (k === 'wire' ? 'Wire name' : 'Item name') + '</span><input ' + listAttr + ' ' + at + ' data-k="' + k + '" data-f="name" value="' + esc(l.name) + '" placeholder="' + HINT[k] + '" autocomplete="off" autocapitalize="off"><div class="chips" data-chips></div></div>';
   const num = (f, lab, ph) => '<div class="fld"><span class="lbl">' + lab + '</span><input class="num" inputmode="decimal" ' + at + ' data-f="' + f + '" value="' + esc(l[f]) + '" placeholder="' + (ph || '') + '"></div>';
   const sel = (f, lab, opts) => '<div class="fld sel"><span class="lbl">' + lab + '</span><select ' + at + ' data-f="' + f + '">' + opts.map(o => '<option' + (l[f] === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
-  const wire = (f, fk, lab) => '<div class="g"><div class="fld"><span class="lbl">' + lab + '</span><input list="dlWire" ' + at + ' data-f="' + f + '" value="' + esc(l[f]) + '" placeholder="wire name" autocomplete="off" autocapitalize="off"></div>' + num(fk, 'Kg given', 'none') + '</div>';
+  const wire = (f, fk, lab) => '<div class="g"><div class="fld"><span class="lbl">' + lab + '</span><input list="dlWire" ' + at + ' data-f="' + f + '" value="' + esc(l[f]) + '" placeholder="Wire name" autocomplete="off" autocapitalize="off"></div>' + num(fk, 'Weight kg', '') + '</div>';
   let rows = '';
-  if (k === 'team') rows = '<div class="g">' + num('n', 'How many') + sel('unit', 'Unit', ['roll', 'sheet', 'pc']) + num('wt', 'Wt kg each') + '</div>';
-  else if (k === 'mach') rows = '<div class="g">' + num('n', 'Rolls') + sel('type', 'Type', ['Normal', 'Lite']) + num('kg', 'Avg kg / roll') + '</div>';
+  if (k === 'team') rows = '<div class="g">' + num('n', 'How many') + sel('unit', 'Unit', ['roll', 'sheet', 'pc']) + num('wt', 'Weight kg each') + '</div>';
+  else if (k === 'mach') rows = '<div class="g">' + num('n', 'Rolls') + sel('type', 'Type', ['Normal', 'Lite']) + num('kg', 'Avg weight kg') + '</div>';
   else if (k === 'coil') rows = '<div class="g">' + num('n', 'Rolls') + sel('type', 'Type', ['Normal', 'Lite']) + '</div>';
-  else if (k === 'cl') rows = '<div class="g">' + num('n', 'Rolls') + num('kg', 'Total kg') + '</div><div class="w2">' + wire('w1', 'w1kg', 'Wire used') + (l.more || l.w2 || l.w2kg ? wire('w2', 'w2kg', '2nd wire') : '<button class="btn sm" type="button" data-act="more" ' + at + '>+ 2nd wire</button>') + '</div>';
-  else rows = '<div class="g">' + num('kg', 'Kg used') + '</div>';
+  else if (k === 'cl') rows = '<div class="g">' + num('n', 'Rolls') + num('kg', 'Total weight kg') + '</div><div class="w2">' + wire('w1', 'w1kg', 'Wire used') + (l.more || l.w2 || l.w2kg ? wire('w2', 'w2kg', '2nd wire') : '<button class="btn sm" type="button" data-act="more" ' + at + '>+ 2nd wire</button>') + '</div>';
+  else rows = '<div class="g">' + num('kg', 'Weight kg') + '</div>';
   return '<div class="ln"><div class="g">' + nameIn + '<button class="x" type="button" title="Remove this line" data-act="rmline" ' + at + '>✕</button></div>' + rows + '</div>';
 }
 function render() {
@@ -433,6 +445,21 @@ if (!S.id) S.id = 'n' + Date.now();
 fixState();
 showName(); render(); renderSaved();
 if (!get(K.name, '')) askName(true);
+/* install message: shown every time the page opens until it is installed */
+(function () {
+  const standalone = () => (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let ev = null, hidden = false; try { hidden = sessionStorage.getItem('pn.insNo') === '1'; } catch (e) {}
+  const box = $('install');
+  const show = () => { if (!standalone() && !hidden) box.hidden = false; };
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); ev = e; $('insTxt').textContent = 'Put it on your home screen and open it like an app.'; $('insGo').hidden = false; show(); });
+  window.addEventListener('appinstalled', () => { box.hidden = true; ev = null; toast('Installed'); });
+  if (ios && !standalone()) {   // iPhone / iPad Safari has no install button: show the steps
+    $('insTxt').innerHTML = 'Tap the <b>Share</b> button <span aria-hidden="true">⬆︎</span> at the bottom of Safari, then <b>Add to Home Screen</b>.'; $('insGo').hidden = true; show();
+  }
+  $('insGo').onclick = async () => { if (!ev) return; ev.prompt(); try { await ev.userChoice; } catch (e) {} ev = null; box.hidden = true; };
+  $('insNo').onclick = () => { box.hidden = true; try { sessionStorage.setItem('pn.insNo', '1'); } catch (e) {} };
+})();
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
 </script>
 </body>
