@@ -86,6 +86,21 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--soft);border:1px
 .askc img{width:64px;height:64px;border-radius:15px;justify-self:center}
 .askc h2{margin:0;text-align:center;font-size:21px}
 .askc p{margin:0;text-align:center;color:var(--muted);font-size:14px}
+.dwrap{position:relative}
+.dwrap input{padding-right:50px}
+.cal{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:10px;background:var(--black);color:#F8D96B;display:grid;place-items:center;cursor:pointer;font-size:18px;overflow:hidden}
+.cal input{position:absolute;inset:0;opacity:0;width:100%;height:100%;padding:0;border:0;cursor:pointer}
+@media (prefers-color-scheme:dark){.cal{background:var(--gold);color:var(--gold-ink)}}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.chips:empty{display:none}
+.chip{border:1.5px solid var(--gold);background:color-mix(in srgb,var(--gold) 14%,var(--card));color:var(--ink);border-radius:99px;padding:6px 11px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer}
+.bh{flex-wrap:wrap}
+.bh select.tm{font-weight:600}
+.fld.sel{flex:1.6}
+.ln select{padding-left:9px;padding-right:3px}
+.w2{display:grid;gap:8px;border-top:1px dashed var(--line);padding-top:8px}
+.wl{font-size:11px;font-weight:700;color:var(--gold-d);text-transform:uppercase;letter-spacing:.04em}
+.btn.sm{padding:7px 10px;font-size:13.5px;color:var(--gold-d);border-style:dashed;border-color:var(--gold)}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
@@ -100,7 +115,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--soft);border:1px
 <main>
   <div class="card">
     <div class="row">
-      <div><label class="f" for="date">Date</label><input id="date" inputmode="numeric" placeholder="dd-mm-yyyy" autocomplete="off"></div>
+      <div><label class="f" for="date">Date</label><div class="dwrap"><input id="date" inputmode="numeric" placeholder="dd-mm-yyyy" autocomplete="off"><label class="cal" title="Pick from calendar" aria-label="Pick the date from a calendar">📅<input type="date" id="datePick" aria-label="Calendar"></label></div></div>
       <div><label class="f">Shift</label><div class="seg" id="shift"><button data-v="Day">Day</button><button data-v="Night">Night</button></div></div>
     </div>
     <div style="margin-top:12px"><label class="f">What are you reporting?</label>
@@ -108,6 +123,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--soft);border:1px
   </div>
 
   <div id="blocks"></div>
+  <div id="wireCard" class="card" hidden></div>
   <div id="nextWrap" class="card" hidden>
     <p class="note" id="nextNote">Done with this one? Add the next:</p>
     <div class="next" id="next"></div>
@@ -140,6 +156,7 @@ pre{white-space:pre-wrap;word-break:break-word;background:var(--soft);border:1px
 </form></div>
 
 <datalist id="dlItems"></datalist>
+<datalist id="dlWire"></datalist>
 
 <script>
 'use strict';
@@ -154,33 +171,42 @@ const pad = n => String(n).padStart(2, '0');
 /* ───────── what each section looks like ───────── */
 const SECTIONS = {
   BB1: { head: 'BB1 {S} Production', defs: [{ kind: 'team', labels: ['Team 1', 'Team 2', 'Team 3', 'Team 4', 'Team 5', 'Team 6'] }] },
-  BB2: { head: 'BB2 {S} Production', defs: [{ kind: 'mach', labels: ['M-2', 'M-3'], stop: 1 }, { kind: 'coil', labels: ['Coiling machine'], once: 1 }, { kind: 'wire', labels: ['Wire used'], once: 1 }] },
-  CL:  { head: 'CHAINLINK {S} Production', defs: [{ kind: 'cl', labels: ['M1', 'M2'], stop: 1 }, { kind: 'wire', labels: ['Wire given'], once: 1 }] },
-  BW:  { head: 'BARBED WIRE {S} Production', defs: [{ kind: 'cl', labels: ['Barbed wire'], single: 1 }, { kind: 'wire', labels: ['Wire given'], once: 1 }] }
+  BB2: { head: 'BB2 {S} Production', wire: true, defs: [{ kind: 'mach', labels: ['M-2', 'M-3'], stop: 1, team: 1 }, { kind: 'coil', labels: ['Coiling machine'], once: 1 }] },
+  CL:  { head: 'CHAINLINK {S} Production', defs: [{ kind: 'cl', labels: ['M1', 'M2', 'M3'], stop: 1 }] },
+  BW:  { head: 'BARBED WIRE {S} Production', defs: [{ kind: 'cl', labels: ['Barbed wire'], single: 1 }] }
 };
 const SECT_NAME = { BB1: 'BB1', BB2: 'BB2', CL: 'Chainlink', BW: 'Barbed wire' };
-const HINT = {
-  team: 'e.g. 40x40x2.2x3x50', mach: 'e.g. 2mmx3ft', coil: 'e.g. 2mmx3ft', cl: 'e.g. Tata ch 90x90x2.5mmx5ft',
-  wire: 'wire, e.g. 2mm'
-};
-const SEED = { BB1: ['40x20x2.7x5x50', '40x40x2.2x3x50', '40x40x2.2x4x50', '40x40x3.7x4x12', '3D mesh 8x3x4mm'],
-  BB2: ['2mmx3ft', '2mmx4ft', '2.2mmx3ft', '2mmx5ft'], CL: [], BW: ['Sada 12x12'] };
+const TEAMS = ['Team A', 'Team B', 'Team C', 'Team D'];
+const HINT = { team: 'e.g. 40x40x2.2x3x50', mach: 'type thickness, e.g. 2 or 1.95', coil: 'type thickness, e.g. 2 or 1.95', cl: 'e.g. Tata ch 90x90x2.5mmx5ft', wire: 'wire, e.g. 2mm' };
+const SEED = { BB1: ['40x20x2.7x5x50', '40x40x2.2x3x50', '40x40x2.2x4x50', '40x40x3.7x4x12', '3D mesh 8x3x4mm'], BB2: [], CL: [], BW: ['Sada 12x12'] };
+const SEED_W = { BB2: ['2mm', '2.2mm', '2.5mm', '1.8mm'], CL: ['Tata wire 2.5mm', 'Supreme wire Printed Wire 2.5mm', 'Tata Ayush Wire 2.5mm', 'Gi Wire 2.5mm'], BW: ['Gi Wire 2.5mm', 'Gi Wire 2mm'], BB1: [] };
+const THICK = ['1.95', '2', '2.15', '2.3'];   // quick picks for the 17x17 name; any number typed works too
 
 /* ───────── state ───────── */
 let S = null;
-const newLine = () => ({ name: '', n: '', unit: 'roll', type: 'Normal', kg: '', wt: '' });
-const newBlock = (def, label) => ({ kind: def.kind, label, stop: false, lines: [newLine(), newLine(), newLine()] });
+const newLine = () => ({ name: '', n: '', unit: 'roll', type: 'Normal', kg: '', wt: '', w1: '', w1kg: '', w2: '', w2kg: '', more: false });
+const defTeam = (shift, label) => ({ 'Day|M-2': 'Team A', 'Day|M-3': 'Team B', 'Night|M-2': 'Team C', 'Night|M-3': 'Team D' }[shift + '|' + label] || 'Team A');
+const newBlock = (def, label, shift) => ({ kind: def.kind, label, stop: false, team: def.team ? defTeam(shift, label) : '', teamSet: false, lines: [newLine(), newLine(), newLine()] });
 function todayStr() { const d = new Date(); return pad(d.getDate()) + '-' + pad(d.getMonth() + 1) + '-' + d.getFullYear(); }
 function defaultShift() { const h = new Date().getHours(); return h >= 6 && h < 18 ? 'Day' : 'Night'; }
 function freshNote(sect, shift, date) {
-  sect = sect || 'BB1';
+  sect = sect || 'BB1'; shift = shift || defaultShift();
   const d = SECTIONS[sect].defs[0];
-  return { id: 'n' + Date.now(), date: date || todayStr(), shift: shift || defaultShift(), sect, blocks: [newBlock(d, d.labels[0])] };
+  return { id: 'n' + Date.now(), date: date || todayStr(), shift, sect, blocks: [newBlock(d, d.labels[0], shift)], wire: SECTIONS[sect].wire ? { lines: [newLine(), newLine(), newLine()] } : null };
+}
+function fixState() {   // drafts saved by an older version
+  if (SECTIONS[S.sect].wire && !S.wire) S.wire = { lines: [newLine(), newLine(), newLine()] };
+  if (!SECTIONS[S.sect].wire) S.wire = null;
+  S.blocks = S.blocks.filter(b => b.kind !== 'wire');
+  if (!S.blocks.length) S.blocks.push(newBlock(SECTIONS[S.sect].defs[0], SECTIONS[S.sect].defs[0].labels[0], S.shift));
+  S.blocks.forEach(b => b.lines.forEach(l => { for (const k of ['w1', 'w1kg', 'w2', 'w2kg']) if (l[k] == null) l[k] = ''; }));
 }
 const defOf = b => SECTIONS[S.sect].defs.find(d => d.kind === b.kind);
 const lineFilled = (k, l) => !!(String(l.name).trim() && (k === 'wire' ? String(l.kg).trim() : String(l.n).trim()));
 const blockFilled = b => b.stop || b.lines.some(l => lineFilled(b.kind, l));
 const cl = v => String(v == null ? '' : v).trim().replace(/\s+/g, '').replace(/,/g, '.');
+const pos = v => { const x = parseFloat(cl(v)); return x > 0 ? x : 0; };
+const blkOf = v => v === 'w' ? S.wire : S.blocks[+v];
 
 /* ───────── the message ───────── */
 function lineText(kind, l) {
@@ -189,22 +215,27 @@ function lineText(kind, l) {
   if (kind === 'team') return n ? [name + ' = ' + n + ' ' + l.unit].concat(wt ? ['Wt. ' + wt + ' kg'] : []) : null;
   if (kind === 'mach') return n ? [name + '- ' + n + ' Roll ' + l.type + (kg ? ' (' + kg + 'kg)' : '')] : null;
   if (kind === 'coil') return n ? [name + '- ' + n + ' Roll ' + l.type] : null;
-  if (kind === 'cl') return n ? [name + '- ' + n + ' Roll' + (kg ? ' (' + kg + 'kg)' : '')] : null;
-  if (kind === 'wire') return kg ? [name + '- ' + kg + 'kg'] : null;
+  if (kind === 'cl') {
+    if (!n) return null; const out = [name + '- ' + n + ' Roll' + (kg ? ' (' + kg + 'kg)' : '')];
+    [[l.w1, l.w1kg], [l.w2, l.w2kg]].forEach(([w, k]) => { if (String(w).trim() && pos(k)) out.push('Wire- ' + String(w).trim() + ' ' + cl(k) + 'kg'); });
+    return out;
+  }
+  if (kind === 'wire') return kg && pos(kg) ? [name + '- ' + kg + 'kg'] : null;
   return null;
 }
-function buildText(forSend) {
-  const sec = SECTIONS[S.sect], out = [];
-  out.push(S.date); out.push(sec.head.replace('{S}', S.shift));
-  let any = false;
-  for (const b of S.blocks) {
-    const def = defOf(b) || {}, body = [];
-    if (b.stop) body.push('Stop'); else b.lines.forEach(l => { const t = lineText(b.kind, l); if (t) body.push.apply(body, t); });
-    if (!body.length) continue;
-    any = true; out.push('');
-    if (!def.single) out.push(b.label);
-    out.push.apply(out, body);
-  }
+function blockText(b) {
+  const def = defOf(b) || {}, body = [];
+  if (b.stop) body.push('Stop'); else b.lines.forEach(l => { const t = lineText(b.kind, l); if (t) body.push.apply(body, t); });
+  if (!body.length) return null;
+  const head = def.single ? [] : [b.label + (b.team ? ' - ' + b.team : '')];
+  return head.concat(body);
+}
+function buildText() {
+  const sec = SECTIONS[S.sect], out = [S.date, sec.head.replace('{S}', S.shift)]; let any = false;
+  const add = lines => { if (lines) { any = true; out.push(''); out.push.apply(out, lines); } };
+  S.blocks.filter(b => b.kind !== 'coil').forEach(b => add(blockText(b)));
+  if (S.wire) { const w = []; S.wire.lines.forEach(l => { const t = lineText('wire', l); if (t) w.push.apply(w, t); }); if (w.length) add(['Wire used'].concat(w)); }
+  S.blocks.filter(b => b.kind === 'coil').forEach(b => add(blockText(b)));
   if (!any) return '';
   const who = get(K.name, ''); out.push(''); if (who) out.push('Entered by: ' + who);
   return out.join('\n').replace(/\n+$/, '');
@@ -213,31 +244,37 @@ function buildText(forSend) {
 /* ───────── rendering ───────── */
 function lineHtml(b, bi, li) {
   const l = b.lines[li], k = b.kind, at = 'data-b="' + bi + '" data-l="' + li + '"';
-  const nameIn = '<div class="fld"><span class="lbl">' + (k === 'wire' ? 'Wire' : 'Item') + '</span><input list="dlItems" ' + at + ' data-f="name" value="' + esc(l.name) + '" placeholder="' + HINT[k] + '" autocomplete="off" autocapitalize="off"></div>';
+  const listAttr = k === 'wire' ? 'list="dlWire"' : (k === 'mach' || k === 'coil') ? '' : 'list="dlItems"';
+  const nameIn = '<div class="fld"><span class="lbl">' + (k === 'wire' ? 'Wire' : 'Item') + '</span><input ' + listAttr + ' ' + at + ' data-k="' + k + '" data-f="name" value="' + esc(l.name) + '" placeholder="' + HINT[k] + '" autocomplete="off" autocapitalize="off"><div class="chips" data-chips></div></div>';
   const num = (f, lab, ph) => '<div class="fld"><span class="lbl">' + lab + '</span><input class="num" inputmode="decimal" ' + at + ' data-f="' + f + '" value="' + esc(l[f]) + '" placeholder="' + (ph || '') + '"></div>';
-  const sel = (f, lab, opts) => '<div class="fld"><span class="lbl">' + lab + '</span><select ' + at + ' data-f="' + f + '">' + opts.map(o => '<option' + (l[f] === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
-  let row2 = '';
-  if (k === 'team') row2 = num('n', 'How many') + sel('unit', 'Unit', ['roll', 'sheet', 'pc']) + num('wt', 'Wt kg each');
-  else if (k === 'mach') row2 = num('n', 'Rolls') + sel('type', 'Type', ['Normal', 'Lite']) + num('kg', 'Total kg');
-  else if (k === 'coil') row2 = num('n', 'Rolls') + sel('type', 'Type', ['Normal', 'Lite']);
-  else if (k === 'cl') row2 = num('n', 'Rolls') + num('kg', 'Total kg');
-  else row2 = num('kg', 'Kg');
-  return '<div class="ln"><div class="g">' + nameIn + '<button class="x" type="button" title="Remove this line" data-act="rmline" ' + at + '>✕</button></div><div class="g">' + row2 + '</div></div>';
+  const sel = (f, lab, opts) => '<div class="fld sel"><span class="lbl">' + lab + '</span><select ' + at + ' data-f="' + f + '">' + opts.map(o => '<option' + (l[f] === o ? ' selected' : '') + '>' + o + '</option>').join('') + '</select></div>';
+  const wire = (f, fk, lab) => '<div class="g"><div class="fld"><span class="lbl">' + lab + '</span><input list="dlWire" ' + at + ' data-f="' + f + '" value="' + esc(l[f]) + '" placeholder="wire name" autocomplete="off" autocapitalize="off"></div>' + num(fk, 'Kg given', 'none') + '</div>';
+  let rows = '';
+  if (k === 'team') rows = '<div class="g">' + num('n', 'How many') + sel('unit', 'Unit', ['roll', 'sheet', 'pc']) + num('wt', 'Wt kg each') + '</div>';
+  else if (k === 'mach') rows = '<div class="g">' + num('n', 'Rolls') + sel('type', 'Type', ['Normal', 'Lite']) + num('kg', 'Avg kg / roll') + '</div>';
+  else if (k === 'coil') rows = '<div class="g">' + num('n', 'Rolls') + sel('type', 'Type', ['Normal', 'Lite']) + '</div>';
+  else if (k === 'cl') rows = '<div class="g">' + num('n', 'Rolls') + num('kg', 'Total kg') + '</div><div class="w2">' + wire('w1', 'w1kg', 'Wire used') + (l.more || l.w2 || l.w2kg ? wire('w2', 'w2kg', '2nd wire') : '<button class="btn sm" type="button" data-act="more" ' + at + '>+ 2nd wire</button>') + '</div>';
+  else rows = '<div class="g">' + num('kg', 'Kg used') + '</div>';
+  return '<div class="ln"><div class="g">' + nameIn + '<button class="x" type="button" title="Remove this line" data-act="rmline" ' + at + '>✕</button></div>' + rows + '</div>';
 }
 function render() {
-  $('date').value = S.date;
+  $('date').value = S.date; $('datePick').value = validDate(S.date) ? S.date.split('-').reverse().join('-') : '';
   document.querySelectorAll('#shift button').forEach(b => b.classList.toggle('on', b.dataset.v === S.shift));
   document.querySelectorAll('#sect button').forEach(b => b.classList.toggle('on', b.dataset.v === S.sect));
   $('blocks').innerHTML = S.blocks.map((b, bi) => {
     const def = defOf(b) || {}, used = S.blocks.filter((o, j) => j !== bi).map(o => o.label);
     const title = def.single ? '<div class="t">' + esc(SECT_NAME[S.sect]) + '</div>'
       : (def.labels && def.labels.length > 1 ? '<select data-act="label" data-b="' + bi + '">' + def.labels.filter(x => x === b.label || !used.includes(x)).map(x => '<option' + (x === b.label ? ' selected' : '') + '>' + x + '</option>').join('') + '</select><div class="t"></div>' : '<div class="t">' + esc(b.label) + '</div>');
+    const team = def.team ? '<select class="tm" data-act="team" data-b="' + bi + '" title="Team">' + TEAMS.map(x => '<option' + (x === b.team ? ' selected' : '') + '>' + x + '</option>').join('') + '</select>' : '';
     const stop = def.stop ? '<label class="stop"><input type="checkbox" data-act="stop" data-b="' + bi + '"' + (b.stop ? ' checked' : '') + '> Stopped</label>' : '';
     const rm = S.blocks.length > 1 ? '<button class="x" type="button" title="Remove this ' + esc(b.label) + '" data-act="rmblock" data-b="' + bi + '">✕</button>' : '';
-    return '<div class="card"><div class="blk' + (b.stop ? ' stopped' : '') + '"><div class="bh">' + title + stop + rm + '</div><div class="lines">' +
+    return '<div class="card"><div class="blk' + (b.stop ? ' stopped' : '') + '"><div class="bh">' + title + team + stop + rm + '</div><div class="lines">' +
       b.lines.map((l, li) => lineHtml(b, bi, li)).join('') +
       '<button class="btn add" type="button" data-act="addline" data-b="' + bi + '">+ Add a line</button></div></div></div>';
   }).join('');
+  const wc = $('wireCard'); wc.hidden = !S.wire;
+  if (S.wire) { const wb = { kind: 'wire', lines: S.wire.lines };
+    wc.innerHTML = '<b>Wire used</b><p class="note" style="margin:2px 0 10px">Wire taken from stock for this shift. Leave it empty if none was given.</p><div class="blk"><div class="lines">' + wb.lines.map((l, li) => lineHtml(wb, 'w', li)).join('') + '<button class="btn add" type="button" data-act="addline" data-b="w">+ Add a wire</button></div></div>'; }
   refresh(); fillItems();
 }
 function refresh() {
@@ -245,6 +282,7 @@ function refresh() {
   const last = S.blocks[S.blocks.length - 1], opts = [];
   if (blockFilled(last)) {
     for (const d of SECTIONS[S.sect].defs) {
+      if (d.single) continue;
       const usedLabels = S.blocks.filter(b => b.kind === d.kind).map(b => b.label);
       const free = d.labels.filter(x => !usedLabels.includes(x));
       if (!free.length) continue;
@@ -254,7 +292,8 @@ function refresh() {
     }
   }
   $('nextWrap').hidden = !opts.length;
-  $('next').innerHTML = opts.map((o, i) => '<button class="btn" type="button" data-act="next" data-i="' + i + '">' + (o.text || '+ Add ' + esc(o.label)) + '</button>').join('');
+  const nh = opts.map((o, i) => '<button class="btn" type="button" data-act="next" data-i="' + i + '">' + (o.text || '+ Add ' + esc(o.label)) + '</button>').join('');
+  if ($('next')._h !== nh) { $('next').innerHTML = nh; $('next')._h = nh; }   // leave the buttons alone when nothing changed, so a tap right after typing is not lost
   $('next')._opts = opts;
   const t = buildText();
   $('pre').textContent = t || 'Nothing to send yet. Fill in an item and how many.';
@@ -263,52 +302,96 @@ function refresh() {
 function saveDraft() { put(K.draft, S); }
 
 /* ───────── events ───────── */
-$('blocks').addEventListener('input', e => {
-  const t = e.target, f = t.dataset.f; if (!f) return;
-  S.blocks[+t.dataset.b].lines[+t.dataset.l][f] = t.value; t.classList.remove('bad'); refresh();
+/* 17x17 suggestions for BB2 item names: type "2" or "1.95mmx4ft" and tap the full name */
+function chipsFor(kind, v) {
+  v = String(v || '').trim();
+  if (kind !== 'mach' && kind !== 'coil') return [];
+  if (!v) return THICK.map(t => '17x17x' + t + 'mm');
+  let m = /^17x17x(\d+(?:\.\d+)?)$/i.exec(v); if (m) return [v + 'mm'];
+  m = /^17x17x(\d+(?:\.\d+)?)mm$/i.exec(v); if (m) return ['3', '4', '5'].map(f => v + 'x' + f + 'ft');
+  if (/^17x17/i.test(v)) return [];
+  m = /^(\d+(?:\.\d+)?)\s*(?:mm)?\s*(.*)$/i.exec(v); if (!m) return [];
+  return ['17x17x' + m[1] + 'mm' + (m[2] ? m[2].replace(/\s+/g, '') : '')];
+}
+function showChips(inp) {
+  const box = inp.parentElement.querySelector('[data-chips]'); if (!box) return;
+  const c = chipsFor(inp.dataset.k, inp.value);
+  box.innerHTML = c.map(x => '<button type="button" class="chip" data-chip="' + esc(x) + '">' + esc(x) + '</button>').join('');
+}
+function hideChipsLater(inp) { setTimeout(() => { const box = inp.parentElement && inp.parentElement.querySelector('[data-chips]'); if (box && document.activeElement !== inp) box.innerHTML = ''; }, 250); }
+document.addEventListener('focusin', e => { if (e.target.matches && e.target.matches('input[data-f=name]')) showChips(e.target); });
+document.addEventListener('focusout', e => { if (e.target.matches && e.target.matches('input[data-f=name]')) hideChipsLater(e.target); });
+document.addEventListener('mousedown', e => { if (e.target.closest('.chip')) e.preventDefault(); });
+document.addEventListener('click', e => {
+  const c = e.target.closest('.chip'); if (!c) return;
+  const inp = c.closest('.fld').querySelector('input[data-f=name]'); inp.value = c.dataset.chip;
+  inp.dispatchEvent(new Event('input', { bubbles: true })); inp.focus(); try { inp.setSelectionRange(inp.value.length, inp.value.length); } catch (x) {}
 });
+
+function onInput(e) {
+  const t = e.target, f = t.dataset.f; if (!f) return;
+  blkOf(t.dataset.b).lines[+t.dataset.l][f] = t.value; t.classList.remove('bad');
+  if (f === 'name') showChips(t);
+  refresh();
+}
+$('blocks').addEventListener('input', onInput); $('wireCard').addEventListener('input', onInput);
 $('blocks').addEventListener('change', e => {
   const t = e.target, a = t.dataset.act, bi = +t.dataset.b;
-  if (a === 'label') { S.blocks[bi].label = t.value; render(); }
+  if (a === 'label') { const b = S.blocks[bi]; b.label = t.value; if (!b.teamSet && defOf(b).team) b.team = defTeam(S.shift, b.label); render(); }
+  else if (a === 'team') { S.blocks[bi].team = t.value; S.blocks[bi].teamSet = true; refresh(); }
   else if (a === 'stop') { S.blocks[bi].stop = t.checked; render(); }
+  else if (t.dataset.f && t.tagName === 'SELECT') { blkOf(t.dataset.b).lines[+t.dataset.l][t.dataset.f] = t.value; refresh(); }
 });
+$('wireCard').addEventListener('change', e => { const t = e.target; if (t.dataset.f && t.tagName === 'SELECT') { S.wire.lines[+t.dataset.l][t.dataset.f] = t.value; refresh(); } });
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-act]'); if (!t) return; const a = t.dataset.act, bi = +t.dataset.b;
-  if (a === 'addline') { S.blocks[bi].lines.push(newLine()); render(); const ins = document.querySelectorAll('#blocks .blk')[bi].querySelectorAll('input[data-f=name]'); ins[ins.length - 1].focus(); }
-  else if (a === 'rmline') { const b = S.blocks[bi]; b.lines.splice(+t.dataset.l, 1); if (!b.lines.length) b.lines.push(newLine()); render(); }
+  const t = e.target.closest('[data-act]'); if (!t) return; const a = t.dataset.act, bv = t.dataset.b, bi = +bv;
+  if (a === 'addline') { blkOf(bv).lines.push(newLine()); render(); const sc = bv === 'w' ? $('wireCard') : document.querySelectorAll('#blocks .blk')[bi]; const ins = sc.querySelectorAll('input[data-f=name]'); ins[ins.length - 1].focus(); }
+  else if (a === 'rmline') { const b = blkOf(bv); b.lines.splice(+t.dataset.l, 1); if (!b.lines.length) b.lines.push(newLine()); render(); }
+  else if (a === 'more') { blkOf(bv).lines[+t.dataset.l].more = true; render(); }
   else if (a === 'rmblock') { if (blockFilled(S.blocks[bi]) && !confirm('Remove ' + S.blocks[bi].label + ' and everything typed in it?')) return; S.blocks.splice(bi, 1); render(); }
-  else if (a === 'next') { const o = $('next')._opts[+t.dataset.i]; S.blocks.push(newBlock(o.d, o.label)); render(); const bl = document.querySelectorAll('#blocks .card'); bl[bl.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  else if (a === 'next') { const o = $('next')._opts[+t.dataset.i]; S.blocks.push(newBlock(o.d, o.label, S.shift)); render(); const bl = document.querySelectorAll('#blocks .card'); bl[bl.length - 1].scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   else if (a === 'osave') openNote(t.dataset.id);
   else if (a === 'ssend') { const n = get(K.notes, []).find(x => x.id === t.dataset.id); if (n) openWA(n.text); }
   else if (a === 'sdel') { if (!confirm('Delete this saved note?')) return; put(K.notes, get(K.notes, []).filter(x => x.id !== t.dataset.id)); renderSaved(); }
 });
-$('shift').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { S.shift = b.dataset.v; render(); } });
+$('shift').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; S.shift = b.dataset.v; S.blocks.forEach(x => { if (!x.teamSet && x.team) x.team = defTeam(S.shift, x.label); }); render(); });
 $('sect').addEventListener('click', e => {
   const b = e.target.closest('button'); if (!b || b.dataset.v === S.sect) return;
-  if (S.blocks.some(blockFilled) && !confirm('Switch to ' + SECT_NAME[b.dataset.v] + '? What you typed for ' + SECT_NAME[S.sect] + ' will be cleared.')) return;
+  if ((S.blocks.some(blockFilled) || (S.wire && S.wire.lines.some(l => lineFilled('wire', l)))) && !confirm('Switch to ' + SECT_NAME[b.dataset.v] + '? What you typed for ' + SECT_NAME[S.sect] + ' will be cleared.')) return;
   S = freshNote(b.dataset.v, S.shift, S.date); render();
 });
 $('date').addEventListener('input', e => {
   const d = e.target.value.replace(/\D/g, '').slice(0, 8); let o = d.slice(0, 2); if (d.length > 2) o += '-' + d.slice(2, 4); if (d.length > 4) o += '-' + d.slice(4);
-  e.target.value = o; S.date = o; e.target.classList.remove('bad'); refresh();
+  e.target.value = o; S.date = o; e.target.classList.remove('bad'); if (validDate(o)) $('datePick').value = o.split('-').reverse().join('-'); refresh();
 });
+// pick from the calendar: yyyy-mm-dd from the phone's date picker → dd-mm-yyyy
+$('datePick').addEventListener('change', e => { const v = e.target.value; if (!v) return; S.date = v.split('-').reverse().join('-'); $('date').value = S.date; $('date').classList.remove('bad'); refresh(); });
+document.querySelector('.cal').addEventListener('click', e => { if (e.target === $('datePick')) { try { $('datePick').showPicker(); } catch (x) {} } });
 
 /* ───────── saving and sending ───────── */
 function toast(m) { const t = $('toast'); t.textContent = m; t.classList.add('on'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('on'), 2400); }
 function validDate(s) { const m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(s || ''); if (!m) return false; const d = new Date(+m[3], +m[2] - 1, +m[1]); return d.getFullYear() === +m[3] && d.getMonth() === +m[2] - 1 && d.getDate() === +m[1]; }
 function check() {
   $('msg').innerHTML = '';
-  if (!validDate(S.date)) { $('date').classList.add('bad'); $('date').focus(); return err('Type the date as dd-mm-yyyy.'); }
-  // an item with a name but no number is easy to miss: point it out
-  const miss = [];
-  S.blocks.forEach(b => { if (!b.stop) b.lines.forEach(l => { if (String(l.name).trim() && !lineFilled(b.kind, l)) miss.push(l.name.trim()); }); });
-  if (miss.length) { document.querySelectorAll('#blocks input').forEach(i => { const l = S.blocks[+i.dataset.b] && S.blocks[+i.dataset.b].lines[+i.dataset.l]; if (l && miss.includes(String(l.name).trim()) && i.dataset.f === (S.blocks[+i.dataset.b].kind === 'wire' ? 'kg' : 'n') && !String(i.value).trim()) i.classList.add('bad'); }); return err('"' + miss[0] + '" has no number yet' + (miss.length > 1 ? ' (and ' + (miss.length - 1) + ' more)' : '') + '. Fill it in or remove the line.'); }
+  if (!validDate(S.date)) { $('date').classList.add('bad'); $('date').focus(); return err('Type the date as dd-mm-yyyy, or tap the calendar.'); }
+  // a name without its number (or a wire kg without its wire) is easy to miss: point it out
+  const miss = [], mark = (bv, li, f) => { const i = document.querySelector('[data-b="' + bv + '"][data-l="' + li + '"][data-f="' + f + '"]'); if (i) i.classList.add('bad'); };
+  const scan = (b, bv) => { if (b.stop) return; b.lines.forEach((l, li) => {
+    const nm = String(l.name).trim();
+    if (nm && !lineFilled(b.kind, l)) { miss.push(nm); mark(bv, li, b.kind === 'wire' ? 'kg' : 'n'); }
+    if (b.kind === 'cl') [['w1', 'w1kg'], ['w2', 'w2kg']].forEach(([w, k]) => { if (pos(l[k]) && !String(l[w]).trim()) { miss.push('wire kg for ' + (nm || 'a line')); mark(bv, li, w); } });
+  }); };
+  S.blocks.forEach((b, bi) => scan(b, bi)); if (S.wire) scan({ kind: 'wire', lines: S.wire.lines }, 'w');
+  if (miss.length) return err('"' + miss[0] + '" is not complete' + (miss.length > 1 ? ' (and ' + (miss.length - 1) + ' more)' : '') + '. Fill it in or remove the line.');
   if (!buildText()) return err('Add at least one item with how many (or the kg for wire).');
   return true;
 }
 function err(m) { $('msg').innerHTML = '<p class="err">' + esc(m) + '</p>'; return false; }
 function rememberNames() {
-  const all = get(K.names, {}); S.blocks.forEach(b => b.lines.forEach(l => { const n = String(l.name).trim(); if (!n || !lineFilled(b.kind, l)) return; const a = all[S.sect] = (all[S.sect] || []).filter(x => x.toLowerCase() !== n.toLowerCase()); a.unshift(n); all[S.sect] = a.slice(0, 80); })); put(K.names, all);
+  const all = get(K.names, {}), keep = (key, n) => { n = String(n || '').trim(); if (!n) return; const a = (all[key] || []).filter(x => x.toLowerCase() !== n.toLowerCase()); a.unshift(n); all[key] = a.slice(0, 80); };
+  S.blocks.forEach(b => b.lines.forEach(l => { if (lineFilled(b.kind, l)) { keep(S.sect, l.name); if (b.kind === 'cl') { if (pos(l.w1kg)) keep(S.sect + 'w', l.w1); if (pos(l.w2kg)) keep(S.sect + 'w', l.w2); } } }));
+  if (S.wire) S.wire.lines.forEach(l => { if (lineFilled('wire', l)) keep(S.sect + 'w', l.name); });
+  put(K.names, all);
 }
 function saveNote() {
   const text = buildText(); rememberNames();
@@ -322,17 +405,18 @@ $('copy').onclick = async () => {
   if (!check()) return; const t = saveNote();
   try { await navigator.clipboard.writeText(t); toast('Saved and copied'); } catch (e) { $('pv').open = true; toast('Saved. Copy from the preview'); }
 };
-function openNote(id) { const n = get(K.notes, []).find(x => x.id === id); if (!n) return; S = JSON.parse(JSON.stringify(n.state)); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); toast('Opened. Change it and send again'); }
+function openNote(id) { const n = get(K.notes, []).find(x => x.id === id); if (!n) return; S = JSON.parse(JSON.stringify(n.state)); fixState(); render(); window.scrollTo({ top: 0, behavior: 'smooth' }); toast('Opened. Change it and send again'); }
 function renderSaved() {
   const notes = get(K.notes, []);
   $('saved').innerHTML = notes.length ? notes.map(n => { const s = n.state, c = (n.text.match(/\n/g) || []).length;
-    return '<div class="sv"><div class="m"><b>' + esc(s.date) + ' · ' + esc(SECT_NAME[s.sect]) + ' ' + esc(s.shift) + '</b><span>' + s.blocks.filter(blockFilled).length + ' ' + (s.sect === 'BB1' ? 'team(s)' : 'section(s)') + (n.id === S.id ? ' · open now' : '') + '</span></div>' +
+    return '<div class="sv"><div class="m"><b>' + esc(s.date) + ' · ' + esc(SECT_NAME[s.sect]) + ' ' + esc(s.shift) + '</b><span>' + s.blocks.filter(blockFilled).length + ' ' + (s.sect === 'BB1' ? 'team(s)' : s.sect === 'BW' ? 'entry' : 'section(s)') + (n.id === S.id ? ' · open now' : '') + '</span></div>' +
       '<button class="btn" data-act="osave" data-id="' + n.id + '">Open</button><button class="btn" data-act="ssend" data-id="' + n.id + '">Send</button><button class="x" data-act="sdel" data-id="' + n.id + '" title="Delete">✕</button></div>'; }).join('')
     : '<p class="note" style="margin:8px 0 0">Nothing saved yet.</p>';
 }
 function fillItems() {
-  const all = get(K.names, {}), list = (all[S.sect] || []).concat(SEED[S.sect] || []);
-  $('dlItems').innerHTML = [...new Set(list)].map(x => '<option value="' + esc(x) + '">').join('');
+  const all = get(K.names, {}), opt = l => [...new Set(l)].map(x => '<option value="' + esc(x) + '">').join('');
+  $('dlItems').innerHTML = opt((all[S.sect] || []).concat(SEED[S.sect] || []));
+  $('dlWire').innerHTML = opt((all[S.sect + 'w'] || []).concat(SEED_W[S.sect] || []));
 }
 
 /* ───────── name (asked once) and start ───────── */
@@ -346,6 +430,7 @@ $('ask').addEventListener('click', e => { if (e.target === $('ask') && get(K.nam
 S = get(K.draft, null);
 if (!S || !S.blocks || !SECTIONS[S.sect]) S = freshNote();
 if (!S.id) S.id = 'n' + Date.now();
+fixState();
 showName(); render(); renderSaved();
 if (!get(K.name, '')) askName(true);
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
